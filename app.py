@@ -1,9 +1,9 @@
-import os
 from flask import Flask, request, send_file
-import pdfplumber
-import pandas as pd
+from flask_cors import CORS
+import os
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 UPLOAD_FOLDER = "/tmp/"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -26,34 +26,20 @@ def upload_file():
     file.save(input_path)
 
     # Generate output filename
-    output_filename = file.filename.rsplit(".", 1)[0] + ".xlsx"
+    output_filename = file.filename.rsplit(".", 1)[0] + ".docx"
     output_path = os.path.join(app.config["UPLOAD_FOLDER"], output_filename)
 
-    # Convert PDF to Excel
+    # Convert PDF to Word (example)
     try:
-        with pdfplumber.open(input_path) as pdf:
-            tables = []
-            for page in pdf.pages:
-                table = page.extract_table()
-                if table:
-                    tables.extend(table)
+        os.system(f"libreoffice --headless --convert-to docx --outdir {UPLOAD_FOLDER} {input_path}")
 
-        if tables:
-            df = pd.DataFrame(tables)
-            df.to_excel(output_path, index=False)
-        else:
-            return {"error": "No tables detected in PDF"}, 400
+        if not os.path.exists(output_path):
+            return {"error": "Converted file not found"}, 500
+
+        return send_file(output_path, as_attachment=True)
 
     except Exception as e:
         return {"error": f"Conversion failed: {str(e)}"}, 500
 
-    # Ensure the file was created before sending it
-    if not os.path.exists(output_path):
-        return {"error": "Converted file not found"}, 500
-
-    return send_file(output_path, as_attachment=True)
-
 if __name__ == "__main__":
     app.run(debug=True)
-
-
