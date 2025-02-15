@@ -1,14 +1,21 @@
-from flask import Flask, request, send_file
-from flask_cors import CORS  # Import CORS
+from flask import Flask, request, send_file, jsonify
+from flask_cors import CORS
 import os
+import subprocess
 
 # Initialize Flask App
 app = Flask(__name__)
-CORS(app, origins=["https://scintillating-stroopwafel-85feb2.netlify.app"])  # Allow frontend
 
-# Configure Upload Folder
-UPLOAD_FOLDER = "/tmp/"
+# Enable CORS to allow frontend requests
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Set up upload folder
+UPLOAD_FOLDER = "/tmp"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+# Ensure the upload directory exists
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 @app.route("/")
 def home():
@@ -17,31 +24,41 @@ def home():
 @app.route("/upload", methods=["POST"])
 def upload_file():
     if "file" not in request.files:
-        return {"error": "No file provided"}, 400
+        return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
     if file.filename == "":
-        return {"error": "No selected file"}, 400
+        return jsonify({"error": "No selected file"}), 400
 
     # Save input file
     input_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
     file.save(input_path)
 
-    # Generate output filename
-    output_filename = file.filename.rsplit(".", 1)[0] + ".docx"
+    # Determine output file name
+    output_filename = os.path.splitext(file.filename)[0] + ".docx"
     output_path = os.path.join(app.config["UPLOAD_FOLDER"], output_filename)
 
     # Convert PDF to Word using LibreOffice
     try:
-        os.system(f'libreoffice --headless --convert-to docx "{input_path}" --outdir "{UPLOAD_FOLDER}"')
+        conversion_command = [
+            "libreoffice",
+            "--headless",
+            "--convert-to",
+            "docx",
+            "--outdir",
+            UPLOAD_FOLDER,
+            input_path,
+        ]
+
+        subprocess.run(conversion_command, check=True)
 
         if not os.path.exists(output_path):
-            return {"error": "Converted file not found"}, 500
+            return jsonify({"error": "Converted file not found"}), 500
 
         return send_file(output_path, as_attachment=True)
 
-    except Exception as e:
-        return {"error": f"Conversion failed: {str(e)}"}, 500
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"Conversion failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
