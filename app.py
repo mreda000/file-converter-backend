@@ -3,13 +3,14 @@ import pdfplumber
 import pandas as pd
 import os
 
-app = Flask(__name__)  # 🔹 Ensure this is at the top before any route
+# 🔹 Define Flask app FIRST before any route
+app = Flask(__name__)
 
 @app.route('/')
 def home():
     return "Welcome to the File Converter API! Use /upload to upload a file."
 
-UPLOAD_FOLDER = os.getcwd()  # Define where uploaded files are stored
+UPLOAD_FOLDER = os.getcwd()
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route('/upload', methods=['POST'])
@@ -38,6 +39,6 @@ def process_conversion(file_path):
     return output_file
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=10000)  # Ensure app runs on 0.0.0.0 for Render
+    app.run(host="0.0.0.0", port=10000)
 
 
