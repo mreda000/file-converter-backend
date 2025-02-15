@@ -1,3 +1,7 @@
+@app.route('/')
+def home():
+    return "Welcome to the File Converter API! Use /upload to upload a file."
+
 from flask import Flask, request, send_file, jsonify
 import pdfplumber
 import pandas as pd
