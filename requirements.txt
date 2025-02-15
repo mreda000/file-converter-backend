@@ -3,3 +3,5 @@ flask
 pdfplumber
 pandas
 openpyxl
+flask-cors
+
