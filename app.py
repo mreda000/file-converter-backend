@@ -1,9 +1,11 @@
 import os
 from flask import Flask, request, send_file
+import pdfplumber
+import pandas as pd
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "/tmp/"  # Save files in Render's temp directory
+UPLOAD_FOLDER = "/tmp/"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 @app.route("/")
@@ -19,24 +21,39 @@ def upload_file():
     if file.filename == "":
         return {"error": "No selected file"}, 400
 
-    # Save file to /tmp/ directory
+    # Save input file
     input_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
     file.save(input_path)
 
-    # Generate output file name
+    # Generate output filename
     output_filename = file.filename.rsplit(".", 1)[0] + ".xlsx"
     output_path = os.path.join(app.config["UPLOAD_FOLDER"], output_filename)
 
-    # Run conversion (Replace this with actual PDF to Excel conversion logic)
-    # Example: Convert PDF to Excel (Dummy placeholder)
-    os.system(f"cp {input_path} {output_path}")  # Replace with actual conversion logic
+    # Convert PDF to Excel
+    try:
+        with pdfplumber.open(input_path) as pdf:
+            tables = []
+            for page in pdf.pages:
+                table = page.extract_table()
+                if table:
+                    tables.extend(table)
 
-    # Ensure the converted file exists
+        if tables:
+            df = pd.DataFrame(tables)
+            df.to_excel(output_path, index=False)
+        else:
+            return {"error": "No tables detected in PDF"}, 400
+
+    except Exception as e:
+        return {"error": f"Conversion failed: {str(e)}"}, 500
+
+    # Ensure the file was created before sending it
     if not os.path.exists(output_path):
-        return {"error": "Conversion failed"}, 500
+        return {"error": "Converted file not found"}, 500
 
     return send_file(output_path, as_attachment=True)
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
