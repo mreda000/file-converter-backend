@@ -1,10 +1,12 @@
 from flask import Flask, request, send_file
-from flask_cors import CORS
+from flask_cors import CORS  # Import CORS
 import os
 
+# Initialize Flask App
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, origins=["https://scintillating-stroopwafel-85feb2.netlify.app"])  # Allow frontend
 
+# Configure Upload Folder
 UPLOAD_FOLDER = "/tmp/"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
@@ -29,9 +31,9 @@ def upload_file():
     output_filename = file.filename.rsplit(".", 1)[0] + ".docx"
     output_path = os.path.join(app.config["UPLOAD_FOLDER"], output_filename)
 
-    # Convert PDF to Word (example)
+    # Convert PDF to Word using LibreOffice
     try:
-        os.system(f"libreoffice --headless --convert-to docx --outdir {UPLOAD_FOLDER} {input_path}")
+        os.system(f'libreoffice --headless --convert-to docx "{input_path}" --outdir "{UPLOAD_FOLDER}"')
 
         if not os.path.exists(output_path):
             return {"error": "Converted file not found"}, 500
